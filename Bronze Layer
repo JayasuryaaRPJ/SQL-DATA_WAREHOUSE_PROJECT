@@ -1,0 +1,136 @@
+create table bronze_crm_cust_info(
+cst_id int,
+cst_key varchar(50),
+cst_firstname varchar(50),
+cst_lastname varchar(50),
+cst_marital_status varchar(50),
+cst_gndr varchar(50),
+cst_create_date date
+);
+
+create table bronze_prd_info(
+prd_id int,
+prd_key varchar(50),
+prd_nm varchar(50),
+prd_cost int,
+prd_line varchar(50),
+prd_start_dt datetime,
+prd_end_dt datetime
+);
+
+create table bronze_sales_details(
+sls_ord_num int,
+sls_prd_key varchar(50),
+sls_cust_id int,
+sls_order_dt datetime,
+sls_ship_dt datetime,
+sls_due_dt datetime,
+sls_sales int,
+sls_quantity int,
+sls_price int
+);
+
+create table bronze_custAZ12(
+cid int,
+bdate date,
+gen varchar(50)
+);
+
+create table bronze_LOC_A101(
+cid int,
+cntry varchar(50)
+);
+
+create table bronze_PX_CAT_G1V2(
+id int,
+cat varchar(50),
+subcat varchar(50),
+maintenance varchar(50)
+);
+
+create table bronze_load_log (
+    load_id int auto_increment primary key,
+    process_name varchar(100),
+    start_time datetime,
+    end_time datetime,
+    duration_seconds int,
+    status varchar(20)
+);
+
+insert into bronze_load_log
+(process_name, start_time, status)
+values ('bronze layer loading', now(), 'running');
+
+set @load_id = last_insert_id();
+
+
+load data local infile 'C:/Users/jayas/Downloads/sql-data-warehouse-project/sql-data-warehouse-project/datasets/source_crm/cust_info.csv'
+into table bronze_crm_cust_info
+fields terminated by ','
+ignore 1 rows;
+
+load data local infile 'C:/Users/jayas/Downloads/sql-data-warehouse-project/sql-data-warehouse-project/datasets/source_crm/prd_info.csv'
+into table bronze_prd_info
+fields terminated by ','
+ignore 1 rows;
+
+load data local infile 'C:/Users/jayas/Downloads/sql-data-warehouse-project/sql-data-warehouse-project/datasets/source_crm/sales_details.csv'
+into table bronze_sales_details
+fields terminated by ','
+ignore 1 rows;
+
+load data local infile 'C:/Users/jayas/Downloads/sql-data-warehouse-project/sql-data-warehouse-project/datasets/source_erp/CUST_AZ12.csv'
+into table bronze_custaz12
+fields terminated by ','
+ignore 1 rows;
+
+load data local infile 'C:/Users/jayas/Downloads/sql-data-warehouse-project/sql-data-warehouse-project/datasets/source_erp/LOC_A101.csv'
+into table bronze_loc_a101
+fields terminated by ','
+ignore 1 rows;
+
+load data local infile 'C:/Users/jayas/Downloads/sql-data-warehouse-project/sql-data-warehouse-project/datasets/source_erp/PX_CAT_G1V2.csv'
+into table bronze_px_cat_g1v2
+fields terminated by ','
+ignore 1 rows;
+
+update bronze_load_log
+set
+end_time = now(),
+duration_seconds = timestampdiff(second, start_time, now()),
+status = 'success'
+where load_id = @load_id;
+
+drop procedure if exists check_bronze;
+
+delimiter //
+
+create procedure check_bronze()
+begin
+select 'loading bronze layer - crm customer data' as message;
+select count(*) as total_records from bronze_crm_cust_info;
+
+select 'loading bronze layer - product data' as message;
+select count(*) as total_records from bronze_prd_info;
+
+select 'loading bronze layer - sales data' as message;
+select count(*) as total_records from bronze_sales_details;
+
+select 'loading bronze layer - erp customer data' as message;
+select count(*) as total_records from bronze_custaz12;
+
+select 'loading bronze layer - location data' as message;
+select count(*) as total_records from bronze_loc_a101;
+
+select 'loading bronze layer - category data' as message;
+select count(*) as total_records from bronze_px_cat_g1v2;
+
+select 'bronze layer validation completed' as message;
+end //
+
+delimiter ;
+
+call check_bronze();
+
+select * from bronze_load_log;
+
